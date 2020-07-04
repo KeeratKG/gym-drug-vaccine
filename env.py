@@ -37,7 +37,7 @@ class StatesEnv(gym.Env):
     def reset(self):
         """
         Resets observation_space to a matrix initialising situation of states wrt the current figures; 
-        action_space tp start exploring from the point of equal distribution between all states.
+        action_space to start exploring from the point of equal distribution between all states.
         """
         action_space = [100/(s+1)]*(s+1)
         observation_space =  [[80188,	28329,	2558,	16787941,	0.03190003492],  
