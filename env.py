@@ -53,8 +53,9 @@ class StatesEnv(gym.Env):
         self.rr = [0]*self.states
         self.states_cond = []
         self.action_list = []
-        self.gamma = 0.90
-        self.epsilon = 0.2
+        self.gamma = 0.80
+        self.epsilon = 0.4
+        self.it_per_ep = 50
         
     def get_discrete_int(self, n):
         discrete_int = int(n)
@@ -116,15 +117,14 @@ class StatesEnv(gym.Env):
 
         #update action_list to store only the most recently used action values 
         self.action_list = action
-        print(self.action_list)
+        print("Distribution set: ",self.action_list)
 
         #no of units distrbuted to respective states 
-        # received = []
-        reserved = []
+        # received = []        
         for i in range(self.states):
-            self.received[i] = self.total*action[i]/100
-        reserved = reserved.append(self.total*action[self.states])
-        print("reserved quantity: ", reserved, "%")
+            self.received[i] = self.total*self.action_list[i]/100
+        reserved_qty = self.total*self.action_list[self.states]/100
+        print("reserved quantity: ", reserved_qty)
         
         
         #simulation
@@ -143,7 +143,7 @@ class StatesEnv(gym.Env):
 
         #policy evaluation
         deltas = []
-        for it in range(self.episodes):
+        for it in range(self.it_per_ep):
             copyValueMap = np.copy(self.valueMap)
             deltaState = [0]*self.states
             for state in range(self.states):
@@ -157,11 +157,11 @@ class StatesEnv(gym.Env):
                 print("Iteration {}".format(it+1))
                 print(valueMap)  #print position also 
                 print("")
-            for state in range(self.states):
-                plt.figure(figsize=(20, 10))
-                plt.rcParams.update({'figure.max_open_warning': 0})
-                plt.plot(it, deltaState[state])
-       
+                for state in range(self.states):
+                    plt.figure(figsize=(20, 10))
+                    plt.rcParams.update({'figure.max_open_warning': 0})
+                    plt.plot(it, deltaState[state])
+
         
 
         # increment episode
@@ -187,12 +187,13 @@ env = StatesEnv(5, episodes, 10000)
 
 obs = env.reset()
 for step in range(episodes):
-    print("Episode {}".format(step+1))
-    obs, reward, done, info = env.step([16.66, 16.66, 16.66, 16.66, 16.66, 16.66])
-    print("obs=", obs, "reward=", reward, "done=", done)
-    if done: 
-        print("Done:)")
-        break
+    if step%10 == 0:
+        print("Episode {}".format(step+1))
+        obs, reward, done, info = env.step([16.66, 16.66, 16.66, 16.66, 16.66, 16.66])
+        print("obs=", obs, "reward=", reward, "done=", done)
+        if done: 
+            print("Done:)")
+            break
 
 env.close()
 
