@@ -55,8 +55,7 @@ class StatesEnv(gym.Env):
         self.action_list = []
         self.gamma = 0.90
         self.epsilon = 0.2
-        self.set_episode_length(2)
-    
+        
     def get_discrete_int(self, n):
         discrete_int = int(n)
         return discrete_int
@@ -86,19 +85,6 @@ class StatesEnv(gym.Env):
         return (self.states_cond, self.action_list)
         
 
-    def set_episode_length(self, minute_interval):
-        """
-        :param minute_interval: how often we will record information, make a recommendation
-        """
-        self.minute_interval = minute_interval
-        global ns
-        ns = int((24 * 60) / self.minute_interval) + 1
-        # Final Time (hr)
-        tf = 24  # simulate for 24 hours
-        # Time Interval (min)
-        self.t = np.linspace(0, tf, ns)
-        self.episode_length = len(self.t)
-
     def step(self, action):
         """
         Assumptions:
@@ -113,23 +99,24 @@ class StatesEnv(gym.Env):
             raise Exception("You need to reset() the environment before calling step()!")
         
         # check if we're done
-        if self.curr_step >= self.episode_length - 2:
+        if self.curr_step >= self.episodes - 1:
             self.done = True
         
-        # get updated time step
-        ts = [self.t[self.curr_step], self.t[self.curr_step + 1]]
-
-        # #exploration vs exploitation 
-        # while self.done ==False:
-        #     if random.uniform(0, 1) < self.epsilon:
-        #         for i in range(self.states):
-        #             action[i] = np.random.randint(0, 16.66)
-        #     else:
-        #         for i in range(self.states):
-        #             action[i] = np.argmax(self.valueMap[i])+1                            
+        #exploration vs exploitation        
+        if random.uniform(0, 1) < self.epsilon:
+            for i in range(self.states):
+                action[i] = np.random.randint(0, 100/(self.states+1))
+            reserved = 100-sum(action)
+            action[self.states] = reserved
+        else:
+            for i in range(self.states):
+                action[i] = np.argmax(self.valueMap[i])+1 
+            reserved = 100 - sum(action) 
+            action[self.states] = reserved
 
         #update action_list to store only the most recently used action values 
         self.action_list = action
+        print(self.action_list)
 
         #no of units distrbuted to respective states 
         # received = []
@@ -137,6 +124,7 @@ class StatesEnv(gym.Env):
         for i in range(self.states):
             self.received[i] = self.total*action[i]/100
         reserved = reserved.append(self.total*action[self.states])
+        print("reserved quantity: ", reserved, "%")
         
         
         #simulation
@@ -155,7 +143,7 @@ class StatesEnv(gym.Env):
 
         #policy evaluation
         deltas = []
-        for it in range(ns):
+        for it in range(self.episodes):
             copyValueMap = np.copy(self.valueMap)
             deltaState = [0]*self.states
             for state in range(self.states):
@@ -165,13 +153,14 @@ class StatesEnv(gym.Env):
                 copyValueMap[state, self.get_discrete_int(self.action_list[state])]= value[state]
             deltas.append(deltaState)
             valueMap = copyValueMap
-            if it%250 == 0:
+            if it%10 == 0:
                 print("Iteration {}".format(it+1))
                 print(valueMap)  #print position also 
                 print("")
-
-        plt.figure(figsize=(20, 10))
-        plt.plot(deltas)
+            for state in range(self.states):
+                plt.figure(figsize=(20, 10))
+                plt.rcParams.update({'figure.max_open_warning': 0})
+                plt.plot(it, deltaState[state])
        
         
 
@@ -193,10 +182,10 @@ class StatesEnv(gym.Env):
     def close(self):
         pass 
 
-env = StatesEnv(5, 500, 10000)
+episodes = 50
+env = StatesEnv(5, episodes, 10000)
 
 obs = env.reset()
-episodes = 500
 for step in range(episodes):
     print("Episode {}".format(step+1))
     obs, reward, done, info = env.step([16.66, 16.66, 16.66, 16.66, 16.66, 16.66])
