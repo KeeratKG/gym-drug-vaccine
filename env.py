@@ -47,7 +47,7 @@ class StatesEnv(gym.Env):
         self.curr_step = 0
         self.done = False
         self.valueMap = np.zeros((self.states, 100))
-        self.total = total #total number of vials available 
+        self.total = total #total number of vials available in 1 batch = batch size 
         self.episodes = episodes
         self.received = [0]*self.states
         self.rr = [0]*self.states
@@ -55,7 +55,7 @@ class StatesEnv(gym.Env):
         self.action_list = []
         self.gamma = 0.80
         self.epsilon = 0.4
-        self.it_per_ep = 50
+       
         
     def get_discrete_int(self, n):
         discrete_int = int(n)
@@ -71,19 +71,18 @@ class StatesEnv(gym.Env):
         self.total = 10000
         # Declare the Initial Conditions for the States
        
-        self.states_cond =  np.array([(80188,	28329, 0., 11297 ),  
-                              (30709,	6511,	0., 308),
-                              (16944,	3186,	0., 201),
-                              (12965,	2444,	0., 236),
-                              (159133,	67615,	0., 365)])
-                            #   (78335,	33216,	0., 555)])
-                                # Confirmed   Active  Recovery Rate(due to effect of drug) Population Density
-                                # Delhi, Guj, Raja, MP, Maha, TN 
+        self.states_cond =  np.array([(80188,28329, 0., 11297 ),  
+                              (30709,6511,0., 308),
+                              (16944,3186,0., 201),
+                              (12965,2444,0., 236),
+                              (159133,67615,0., 365)])
+                               # Confirmed   Active  Recovery Rate(due to effect of drug) Population Density
+                               # Delhi, Guj, Raja, MP, Maha, TN 
         #store the actions in an array 
         self.action_list = np.array([100/(self.states+1)]*(self.states+1))
         #Declare the Value table 
         self.valueMap = np.zeros((self.states, 100))
-        return (self.states_cond, self.action_list)
+        return self.states_cond, self.action_list
         
 
     def step(self, action):
@@ -94,8 +93,11 @@ class StatesEnv(gym.Env):
         3. 1 person requires 1 vial (dose) only.
         4. No of confirmed and active cases in one particular region is constant, until we integrate the ABM projections model. 
         So, for the time being, recovery rate will always increase when drug is supplied to a particular state.
-        """
-
+        
+    """
+        
+        self.states_cond, self.action_list = self.reset()
+        
         if self.states_cond is None:
             raise Exception("You need to reset() the environment before calling step()!")
         
@@ -131,44 +133,33 @@ class StatesEnv(gym.Env):
         recovered = [0]*self.states
         
         for i in range(self.states):
-            recovered[i] = 0.5*int(self.received[i])  #50% efficacy
-            self.rr[i] = recovered[i]/self.states_cond[i, 0] 
-            print(self.rr)
-            print(self.states_cond[:,2])       #recovery rate for the 'i'th state                         
-            self.states_cond[:, 2] = self.rr                            #update values in states_cond matrix 
+            recovered[i] = 0.5*self.get_discrete_int(self.received[i])  #50% efficacy
+            self.rr[i] = recovered[i]/self.states_cond[i][0] 
+        print("recovery rate due to drug: ",self.rr)
+        self.states_cond = np.array(self.states_cond)
+        print("recovery rate(before): ", self.states_cond[:,2])       #recovery rate for the 'i'th state                         
+        self.states_cond[:, 2] = self.rr                            #update values in states_cond matrix 
 
           
         #reward only when task done 
         reward = self.get_reward()
 
-        #policy evaluation
-        deltas = []
-        for it in range(self.it_per_ep):
-            copyValueMap = np.copy(self.valueMap)
-            deltaState = [0]*self.states
-            for state in range(self.states):
-                value = np.zeros((self.states, ))
-                value += reward[state]+(self.gamma*self.valueMap[state, self.get_discrete_int(self.action_list[state])])
-                deltaState = np.append(deltaState, np.abs(copyValueMap[state, self.get_discrete_int(self.action_list[state])]-value[state]))
-                copyValueMap[state, self.get_discrete_int(self.action_list[state])]= value[state]
-            deltas.append(deltaState)
-            valueMap = copyValueMap
-            if it%10 == 0:
-                print("Iteration {}".format(it+1))
-                print(valueMap)  #print position also 
-                print("")
-                for state in range(self.states):
-                    plt.figure(figsize=(20, 10))
-                    plt.rcParams.update({'figure.max_open_warning': 0})
-                    plt.plot(it, deltaState[state])
-
+        #update the value map
+        copyValueMap = np.copy(self.valueMap)
+        deltaState = [0]*self.states
+        for state in range(self.states):
+            value = np.zeros((self.states, ))
+            value += reward[state]+(self.gamma*self.valueMap[state, self.get_discrete_int(self.action_list[state])])
+            deltaState = np.append(deltaState, np.abs(copyValueMap[state, self.get_discrete_int(self.action_list[state])]-value[state]))
+            copyValueMap[state, self.get_discrete_int(self.action_list[state])]= value[state]
+        valueMap = copyValueMap
         
 
         # increment episode
         self.curr_step += 1
 
 
-        return self.states_cond, reward, self.done, {}
+        return self.states_cond, reward, self.done, deltaState
     
     def get_reward(self):
         for i in range(self.states):
@@ -182,18 +173,32 @@ class StatesEnv(gym.Env):
     def close(self):
         pass 
 
+locations = 5
 episodes = 50
-env = StatesEnv(5, episodes, 10000)
+total_drugs_qty = 10000
+#create an instance of the class 
+env = StatesEnv(locations, episodes, total_drugs_qty)
+
+action = [16.66, 16.66, 16.66, 16.66, 16.66, 16.66]
+delta = []
 
 obs = env.reset()
-for step in range(episodes):
-    if step%10 == 0:
-        print("Episode {}".format(step+1))
-        obs, reward, done, info = env.step([16.66, 16.66, 16.66, 16.66, 16.66, 16.66])
-        print("obs=", obs, "reward=", reward, "done=", done)
-        if done: 
+for ep in range(episodes):
+    obs, reward, done, info = env.step(action)
+    if ep%10 == 0:
+        print("Episode {}".format(ep+1))        
+        print("obs=", obs, "reward=", reward, "done=", done)        
+    delta.append(info)
+    plt.figure(figsize=(20, 10))
+    plt.rcParams.update({'figure.max_open_warning': 0})
+    if done: 
             print("Done:)")
             break
+for l in range(locations):    
+    plt.subplot(locations, 1, l+1)
+    plt.plot([5,10,15,20,25,30,35,40,45,50], delta[l], 'b-')
+plt.show()
+
 
 env.close()
 
