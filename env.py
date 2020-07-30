@@ -56,6 +56,7 @@ class StatesEnv(gym.Env):
         self.gamma = 0.80
         self.epsilon = 0.4
        
+       
         
     def get_discrete_int(self, n):
         discrete_int = int(n)
@@ -96,14 +97,16 @@ class StatesEnv(gym.Env):
         
     """
         
-        self.states_cond, self.action_list = self.reset()
-        
         if self.states_cond is None:
             raise Exception("You need to reset() the environment before calling step()!")
         
         # check if we're done
         if self.curr_step >= self.episodes - 1:
             self.done = True
+                    
+        #start with equal distribution 
+        if self.curr_step == 1:
+            self.action_list = np.array([100/(self.states+1)]*(self.states+1))
         
         #exploration vs exploitation        
         if random.uniform(0, 1) < self.epsilon:
@@ -120,6 +123,7 @@ class StatesEnv(gym.Env):
         #update action_list to store only the most recently used action values 
         self.action_list = action
         print("Distribution set: ",self.action_list)
+        
 
         #no of units distrbuted to respective states 
         # received = []        
@@ -139,6 +143,7 @@ class StatesEnv(gym.Env):
         self.states_cond = np.array(self.states_cond)
         print("recovery rate(before): ", self.states_cond[:,2])       #recovery rate for the 'i'th state                         
         self.states_cond[:, 2] = self.rr                            #update values in states_cond matrix 
+        self.states_cond[:, 1] -= recovered 
 
           
         #reward only when task done 
@@ -159,7 +164,8 @@ class StatesEnv(gym.Env):
         self.curr_step += 1
 
 
-        return self.states_cond, reward, self.done, deltaState
+        return self.states_cond, reward, self.done, {'action_list': self.action_list, 'episode': self.curr_step,
+                                                    'change': deltaState}
     
     def get_reward(self):
         for i in range(self.states):
@@ -189,15 +195,16 @@ for ep in range(episodes):
         print("Episode {}".format(ep+1))        
         print("obs=", obs, "reward=", reward, "done=", done)        
     delta.append(info)
-    plt.figure(figsize=(20, 10))
-    plt.rcParams.update({'figure.max_open_warning': 0})
-    if done: 
-            print("Done:)")
-            break
-for l in range(locations):    
-    plt.subplot(locations, 1, l+1)
-    plt.plot([5,10,15,20,25,30,35,40,45,50], delta[l], 'b-')
-plt.show()
+print(delta)
+#     plt.figure(figsize=(20, 10))
+#     plt.rcParams.update({'figure.max_open_warning': 0})
+#     if done: 
+#             print("Done:)")
+#             break
+# for l in range(locations):    
+#     plt.subplot(locations, 1, l+1)
+#     plt.plot([5,10,15,20,25,30,35,40,45,50], delta[l], 'b-')
+# plt.show()
 
 
 env.close()
