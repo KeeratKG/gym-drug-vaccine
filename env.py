@@ -54,9 +54,8 @@ class StatesEnv(gym.Env):
         self.states_cond = []
         self.action_list = []
         self.gamma = 0.80
-        self.epsilon = 0.4
-       
-       
+        self.epsilon = 0.4  
+
         
     def get_discrete_int(self, n):
         discrete_int = int(n)
@@ -78,7 +77,7 @@ class StatesEnv(gym.Env):
                               (12965,2444,0., 236),
                               (159133,67615,0., 365)])
                                # Confirmed   Active  Recovery Rate(due to effect of drug) Population Density
-                               # Delhi, Guj, Raja, MP, Maha, TN 
+                               # Delhi, Guj, Raja, MP, Maha 
         #store the actions in an array 
         self.action_list = np.array([100/(self.states+1)]*(self.states+1))
         #Declare the Value table 
@@ -154,7 +153,7 @@ class StatesEnv(gym.Env):
         deltaState = [0]*self.states
         for state in range(self.states):
             value = np.zeros((self.states, ))
-            value += reward[state]+(self.gamma*self.valueMap[state, self.get_discrete_int(self.action_list[state])])
+            value += reward+(self.gamma*self.valueMap[state, self.get_discrete_int(self.action_list[state])])
             deltaState = np.append(deltaState, np.abs(copyValueMap[state, self.get_discrete_int(self.action_list[state])]-value[state]))
             copyValueMap[state, self.get_discrete_int(self.action_list[state])]= value[state]
         valueMap = copyValueMap
@@ -172,6 +171,7 @@ class StatesEnv(gym.Env):
             cpu = 1
             reward = [0]*self.states
             reward[i] = self.rr[i]*math.exp(-cpu*self.received[i])
+        reward = sum(reward)
         return reward 
 
 
@@ -188,14 +188,16 @@ env = StatesEnv(locations, episodes, total_drugs_qty)
 action = [16.66, 16.66, 16.66, 16.66, 16.66, 16.66]
 delta = []
 
+
 obs = env.reset()
 for ep in range(episodes):
     obs, reward, done, info = env.step(action)
+    delta = np.append(delta, info)
     if ep%10 == 0:
         print("Episode {}".format(ep+1))        
         print("obs=", obs, "reward=", reward, "done=", done)        
-    delta.append(info)
-print(delta)
+    
+#print(delta)
 #     plt.figure(figsize=(20, 10))
 #     plt.rcParams.update({'figure.max_open_warning': 0})
 #     if done: 
