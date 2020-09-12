@@ -1,2 +1,2 @@
-# COVID_Vaccine_RL
-Policy Optimisation for the drug & vaccine disribution problem. 
+# COVID_Drug_RL
+Policy Optimisation for the drug disribution problem. 
