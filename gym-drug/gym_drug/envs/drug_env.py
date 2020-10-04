@@ -64,7 +64,7 @@ class StatesEnv(gym.Env):
     def reset(self):
         """
         Resets observation_space to a matrix initialising situation of states wrt the current figures; 
-        action_space tp start exploring from the point of equal distribution between all states.
+        action_space to start exploring from the point of equal distribution between all states.
         """
         self.curr_step = 0
         self.done = False
@@ -77,7 +77,7 @@ class StatesEnv(gym.Env):
                               (12965,2444,0., 236),
                               (159133,67615,0., 365)])
                                # Confirmed   Active  Recovery Rate(due to effect of drug) Population Density
-                               # Delhi, Guj, Raja, MP, Maha 
+                               # Delhi, Guj, Raja, MP, Maha (Distribution amongst 5 Indian States)
         #store the actions in an array 
         self.action_list = np.array([100/(self.states+1)]*(self.states+1))
         #Declare the Value table 
@@ -196,18 +196,7 @@ for ep in range(episodes):
     if ep%10 == 0:
         print("Episode {}".format(ep+1))        
         print("obs=", obs, "reward=", reward, "done=", done)        
-    
-#print(delta)
-#     plt.figure(figsize=(20, 10))
-#     plt.rcParams.update({'figure.max_open_warning': 0})
-#     if done: 
-#             print("Done:)")
-#             break
-# for l in range(locations):    
-#     plt.subplot(locations, 1, l+1)
-#     plt.plot([5,10,15,20,25,30,35,40,45,50], delta[l], 'b-')
-# plt.show()
-
+   
 
 env.close()
 
